@@ -185,6 +185,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
     @classmethod
     def load(cls, settings):
         lc.set_encoding(settings.get("encoding", 'utf-8'))
+        cls.font_face = settings.get("font_face", 'Lucida Console')
         syntaxes = settings.get('syntaxes', [])
         ignored_syntaxes = settings.get('ignored_syntaxes', [])
         aliases_ = settings.get('aliases', {})
@@ -236,7 +237,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         view = window.new_file()
         view.assign_syntax(cls.syntax_path)
         view.set_name("CodeLines")
-        view.settings().set("font_face", "Lucida Console")
+        view.settings().set("font_face", cls.font_face)
         view.settings().set("word_wrap", False)
         view.settings().set("translate_tabs_to_spaces", True)
         view.settings().set("rootdir", rootdir)
@@ -254,7 +255,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         view = view.window().new_file()
         view.assign_syntax(cls.syntax_path)
         view.set_name("CodeLines - %s" % lang)
-        view.settings().set("font_face", "Lucida Console")
+        view.settings().set("font_face", cls.font_face)
         view.settings().set("word_wrap", False)
         view.settings().set("translate_tabs_to_spaces", True)
         view.settings().set("rootdir", rootdir)

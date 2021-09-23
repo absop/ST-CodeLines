@@ -2,6 +2,8 @@
     // encoding for os file path
     "encoding": "utf-8",
 
+    "font_face": "Lucida Console",
+
     // "path_filters": [],
 
     /*
