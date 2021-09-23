@@ -1,0 +1,30 @@
+[
+    {
+        "keys": ["o"],
+        "command": "code_lines_open_file",
+        "context": [{
+                "key": "selector", "operator": "equal", "operand": "markup.underline.link.path.codelines"
+            }]
+    },
+    {
+        "keys": ["enter"],
+        "command": "code_lines_open_file",
+        "context": [{
+                "key": "selector", "operator": "equal", "operand": "markup.underline.link.path.codelines"
+            }]
+    },
+    {
+        "keys": ["d"],
+        "command": "code_lines_show_types",
+        "context": [{
+                "key": "selector", "operator": "equal", "operand": "entity.name.language.codelines"
+            }]
+    },
+    {
+        "keys": ["enter"],
+        "command": "code_lines_show_types",
+        "context": [{
+                "key": "selector", "operator": "equal", "operand": "entity.name.language.codelines"
+            }]
+    }
+]

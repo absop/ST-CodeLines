@@ -1,0 +1,98 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+scope: text.codelines
+name: CodeLines
+variables:
+  regex_path: (\w:)?[^\"\n:|*<?>]+
+  regex_ident: (([^\s│]+\s*)+)
+  regex_2cols: ([0-9]+(?:\.[0-9]+)?)(B|KB|MB|GB)│\s*([0-9]+)
+
+  tab_caption: \s*(Size)│\s*(Files)│\s*(Lines)
+  tab_content: \s*{{regex_2cols}}│\s*([0-9]+)
+
+contexts:
+  main:
+    - match: (ROOTDIR)(:)(\s+({{regex_path}}))?$
+      captures:
+        1: keyword.rootdir.codelines
+        2: punctuation.separator.codelines
+        3: markup.underline.link.root.codelines
+
+    - match: (Time)(:)\s*([0-9/:]+)
+      captures:
+        1: keyword.time.codelines
+        2: punctuation.separator.codelines
+        3: string.time.codelines
+
+    - include: tab-header
+
+  tab-header:
+    - match: (Languages)│{{tab_caption}}
+      captures:
+        1: keyword.title.codelines
+        2: keyword.title.codelines
+        3: keyword.title.codelines
+        4: keyword.title.codelines
+      push: languages
+
+    - match: (Types)│{{tab_caption}}
+      captures:
+        1: keyword.title.codelines
+        2: keyword.title.codelines
+        3: keyword.title.codelines
+        4: keyword.title.codelines
+      push: filetypes
+
+  languages:
+    - match: ^═.+
+      pop: true
+
+    - include: summary
+
+    - match: '{{regex_ident}}│{{tab_content}}'
+      captures:
+        1: entity.name.language.codelines
+        3: constant.numeric.codelines
+        4: string.unit.codelines
+        5: constant.numeric.codelines
+        6: constant.numeric.codelines
+
+  filetypes:
+    - match: ^═.+
+      push: paths-caption
+
+    - include: summary
+
+    - match: '{{regex_ident}}│{{tab_content}}'
+      captures:
+        1: entity.name.filetype.codelines
+        3: constant.numeric.codelines
+        4: string.unit.codelines
+        5: constant.numeric.codelines
+        6: constant.numeric.codelines
+
+  summary:
+    - match: (Total)│{{tab_content}}
+      captures:
+        1: keyword.title.codelines
+        2: constant.numeric.codelines
+        3: string.unit.codelines
+        4: constant.numeric.codelines
+        5: constant.numeric.codelines
+
+  paths-caption:
+    - match: (Size)│\s*(Lines)│\s*(Path)
+      captures:
+        1: keyword.title.codelines
+        2: keyword.title.codelines
+        3: keyword.title.codelines
+      push: paths-content
+
+  paths-content:
+    - match: ^\s*{{regex_2cols}}│\s+({{regex_path}})$
+      captures:
+        1: constant.numeric.codelines
+        2: string.unit.codelines
+        3: constant.numeric.codelines
+        4: markup.underline.link.path.codelines

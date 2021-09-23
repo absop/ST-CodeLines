@@ -1,0 +1,26 @@
+[
+    {
+        "caption": "Preferences: CodeLines Settings",
+        "command": "edit_settings",
+        "args": {
+          "base_file": "${packages}/CodeLines/CodeLines.sublime-settings",
+          "default": "\n{\n\t$0\n}\n"
+          }
+    },
+    {
+        "caption": "CodeLines: Toggle Log",
+        "command": "code_lines_toggle_log",
+    },
+    {
+        "caption": "CodeLines: Count",
+        "command": "code_lines_in_directory",
+    },
+    {
+        "caption": "CodeLines: Count with Pattern",
+        "command": "code_lines_in_directory_with_pattern",
+    },
+    {
+        "caption": "CodeLines: File Size",
+        "command": "code_lines_file_size",
+    }
+]

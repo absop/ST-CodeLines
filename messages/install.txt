@@ -1,0 +1,17 @@
+`CodeLines` is a code statistic plugin for **Sublime Text 4**.
+It provides visual statistics of codes in a directory or a file.
+
+
+Usage
+-----
+### Sidebar Menu items
++ `File Size`
++ `Code Lines`
++ `Code Lines (with Pattern)`
+
+### Command Palette
++ `CodeLines: Count`
++ `CodeLines: Count with Pattern`
++ `CodeLines: File Size`
+
+Click <https://github.com/absop/CodeLines> for more usage.

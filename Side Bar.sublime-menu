@@ -1,0 +1,18 @@
+[
+	{"caption": "-", "id": "size_commands"},
+	{
+		"caption": "File Size",
+		"command": "side_bar_file_size",
+		"args": {"paths": []}
+	},
+	{
+		"caption": "Code Lines",
+		"command": "side_bar_code_lines",
+		"args": {"paths": []}
+	},
+	{
+		"caption": "Code Lines (with Pattern)",
+		"command": "side_bar_code_lines_with_pattern",
+		"args": {"paths": []}
+	},
+]

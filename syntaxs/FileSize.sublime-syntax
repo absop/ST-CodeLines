@@ -1,0 +1,48 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+scope: text.filesize
+name: FileSize
+contexts:
+  main:
+    - include: rootdir
+    - include: total
+    - include: contains
+
+  rootdir:
+    - match: (ROOTDIR)(:)\s+((\w:)?([^\"\n:|*<?>])+)$
+      captures:
+        1: keyword.declaration.filesize
+        2: punctuation.separator.filesize
+        3: markup.underline.link.filesize
+
+    - match: (PATH)(:)\s+((\w:)?([^\"\n:|*<?>])+)$
+      captures:
+        1: keyword.declaration.filesize
+        2: punctuation.separator.filesize
+        3: filename.path.filesize
+
+  total:
+    - match: (TotalSize|Size)(:)\s*([0-9]+(\.[0-9]+)?)(B|KB|MB|GB)(\()\s*([0-9]+)\s*(Bytes)(\))$
+      captures:
+        1: entity.name.tag.filesize
+        2: punctuation.separator.filesize
+        6: punctuation.separator.filesize
+        9: punctuation.separator.filesize
+        3: constant.numeric.filesize
+        7: constant.numeric.filesize
+        5: string.unit.count-files
+        8: string.unit.count-files
+
+  contains:
+    - match: (Contains)(:)\s*(Files)(:)\s*([0-9]+)\s*(,)\s*(Folders)(:)\s*([0-9]+)
+      captures:
+        1: entity.name.tag.filesize
+        3: entity.other.attribute-name.filesize
+        7: entity.other.attribute-name.filesize
+        5: constant.numeric.filesize
+        9: constant.numeric.filesize
+        2: punctuation.separator.filesize
+        4: punctuation.separator.filesize
+        6: punctuation.separator.filesize
+        8: punctuation.separator.filesize
