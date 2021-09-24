@@ -68,8 +68,12 @@ class CodeLinesToggleLogCommand(sublime_plugin.WindowCommand):
 
 
 class PathInputHandler(sublime_plugin.TextInputHandler):
+    def __init__(self, is_wanted=os.path.exists, path_type='File Path'):
+        self.is_wanted = is_wanted
+        self.path_type = path_type
+
     def placeholder(self):
-        return 'File Path'
+        return self.path_type
 
     def initial_text(self):
         view = sublime.active_window().active_view()
@@ -80,7 +84,7 @@ class PathInputHandler(sublime_plugin.TextInputHandler):
         return ''
 
     def validate(self, path):
-        return os.path.exists(path)
+        return self.is_wanted(path)
 
 
 class CodeLinesFileSizeCommand(sublime_plugin.WindowCommand):
@@ -165,6 +169,11 @@ class CodeLinesInDirectoryCommand(sublime_plugin.WindowCommand):
 
 
 class CodeLinesInDirectoryWithPatternCommand(CodeLinesInDirectoryCommand):
+    def input(self, path, **args):
+        return PathInputHandler(
+            is_wanted=os.path.isdir,
+            path_type='Directory Path')
+
     def count_directory(self, path, from_settings=True):
         def count_directory_with_pattern(path, pattern):
             debug(f'pattern: {pattern}')
