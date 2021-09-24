@@ -1,24 +1,38 @@
 import re
 import os
 import time
-import functools
+import threading
+from contextlib import contextmanager
+from functools import partial, reduce
+from os.path import relpath
 
 import sublime
 import sublime_plugin
 
-from .lib import Loger
 from .lib import lc
 from .lib import utils
 from .lib.utils import cd, strsize, try_or_zero
 
 
+def debug(*args):
+    if debug._debug:
+        print(f'{__package__}:', *args)
+
+debug._debug = False
+
+
+def walk_exclude_hidden(top):
+    return os.walk(top)
+
+
 class SideBarFileSizeCommand(sublime_plugin.WindowCommand):
     command = 'code_lines_file_size'
 
-    def run(self, paths):
-        self.window.run_command(self.command, {'path': paths[0]})
+    def run(self, paths, **args):
+        args.update({'path': paths[0]})
+        self.window.run_command(self.command, args)
 
-    def is_visible(self, paths):
+    def is_visible(self, paths, **args):
         return len(paths) == 1 and os.path.exists(paths[0])
 
 
@@ -29,27 +43,27 @@ class SideBarCodeLinesCommand(SideBarFileSizeCommand):
 class SideBarCodeLinesWithPatternCommand(SideBarFileSizeCommand):
     command = 'code_lines_in_directory_with_pattern'
 
-    def is_visible(self, paths):
+    def is_visible(self, paths, **args):
         return len(paths) == 1 and os.path.isdir(paths[0])
 
 
 class CodeLinesShowTypesCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        if self.view.settings().has("cc_languages"):
+        if self.view.settings().has("cl_languages"):
             pt = self.view.sel()[0].a
             CodeLinesViewsManager.show_types_at(self.view, pt)
 
 
 class CodeLinesOpenFileCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        if self.view.settings().has("cc_language"):
+        if self.view.settings().has("cl_language"):
             pt = self.view.sel()[0].a
             CodeLinesViewsManager.open_file_at(self.view, pt)
 
 
 class CodeLinesToggleLogCommand(sublime_plugin.WindowCommand):
     def run(self):
-        Loger.debug = not Loger.debug
+        debug._debug = not debug._debug
 
 
 class PathInputHandler(sublime_plugin.TextInputHandler):
@@ -70,7 +84,9 @@ class PathInputHandler(sublime_plugin.TextInputHandler):
 
 class CodeLinesFileSizeCommand(sublime_plugin.WindowCommand):
     def run(self, path):
-        Loger.threading(lambda: self.show_size(path), "Counting...", "Succeed.")
+        task = StatusBarTask(lambda: self.show_size(path),
+            'Counting...', 'Succeed.')
+        StatusBarThread(task, self.window, __package__)
 
     def input(self, args):
         return PathInputHandler()
@@ -102,27 +118,21 @@ class CodeLinesFileSizeCommand(sublime_plugin.WindowCommand):
             self.size = 0
             self.files = 0
             self.folders = 0
-            def walk(dir):
-                for name in os.listdir(dir):
-                    path = os.path.join(dir, name)
-                    if os.path.isfile(path):
-                        self.files += 1
-                        self.size += os.path.getsize(path)
-                    else:
-                        self.folders += 1
-                        walk(path)
-            with cd(path):
-                walk('.')
+            for path, dirs, files in os.walk(path):
+                for file in files:
+                    self.size += os.path.getsize(os.path.join(path, file))
+                self.files += len(files)
+                self.folders += len(dirs)
 
 
 class CodeLinesInDirectoryCommand(sublime_plugin.WindowCommand):
-    def run(self, path):
+    def run(self, path, **args):
         if os.path.isdir(path):
-            self.count_directory(path)
+            self.count_directory(path, **args)
         elif os.path.isfile(path):
             self.count_singel_file(path)
 
-    def input(self, args):
+    def input(self, path, **args):
         return PathInputHandler()
 
     def count_singel_file(self, path):
@@ -130,51 +140,55 @@ class CodeLinesInDirectoryCommand(sublime_plugin.WindowCommand):
         sublime.message_dialog(message)
 
     def count_directory(self, path):
-        Loger.threading(
-            lambda: CodeLinesViewsManager.show_code_lines(
-                self.window, path, self.walk),
-            "Counting...", "Successful counting lines.")
+        CodeLinesViewsManager.run_task(self.window, path, self.get_filepaths)
 
-    def walk(self):
-        def count_dir(dir):
-            for file in sorted(os.listdir(dir)):
-                path = os.path.join(dir, file) if dir != '.' else file
-                if os.path.isdir(path):
-                    yield from count_dir(path)
-                else:
-                    yield path, file
-        return count_dir('.')
+    def get_filepaths(self, walk_result):
+        filepaths = []
+        for root, _, files in walk_result:
+            for file in files:
+                path = os.path.join(root, file)
+                filepaths.append((path, file))
+        return filepaths
 
 
 class CodeLinesInDirectoryWithPatternCommand(CodeLinesInDirectoryCommand):
-    initial_pattern = '.*'
+    def count_directory(self, path, from_settings=True):
+        def count_directory_with_pattern(path, pattern):
+            debug(f'pattern: {pattern}')
+            self.regex = re.compile(pattern)
+            super(self.__class__, self).count_directory(path)
 
-    def count_directory(self, path):
-        panel = self.window.show_input_panel(
-            'File Pattern', self.initial_pattern,
-            functools.partial(self.count_directory_with_pattern, path),
-            None, None)
-        panel.sel().clear()
-        panel.sel().add(sublime.Region(0, len(self.initial_pattern)))
+        default_pattern = CodeLinesViewsManager.default_pattern
+        if from_settings:
+            count_directory_with_pattern(path, default_pattern)
+        else:
+            panel = self.window.show_input_panel(
+                'Path Regexp', default_pattern,
+                partial(count_directory_with_pattern, path),
+                None, None)
+            panel.sel().clear()
+            panel.sel().add(sublime.Region(0, len(default_pattern)))
+            panel.assign_syntax('RegExp.sublime-syntax')
 
-    def count_directory_with_pattern(self, path, pattern):
-        self.pattern = pattern
-        super().count_directory(path)
-
-    def walk(self):
-        return []
+    def get_filepaths(self, walk_result):
+        filepaths = []
+        for root, _, files in walk_result:
+            for file in files:
+                path = os.path.join(root, file)
+                if self.regex.fullmatch(path):
+                    filepaths.append((path, file))
+        return filepaths
 
 
 class CodeLinesViewsManager(sublime_plugin.EventListener):
-    syntax_path = 'CodeLines.sublime-syntax'
-    settings_name = 'CodeLines.sublime-settings'
-    language_decider = lambda path: 'Plain Text'
+    syntax_path = f'{__package__}.sublime-syntax'
+    settings_name = f'{__package__}.sublime-settings'
 
     @classmethod
     def setup(cls):
         settings = sublime.load_settings(cls.settings_name)
-        settings.clear_on_change("encoding")
-        settings.add_on_change("encoding", lambda: cls.load(settings))
+        settings.clear_on_change('encoding')
+        settings.add_on_change('encoding', lambda: cls.load(settings))
         cls.load(settings)
         lc.load_binary()
 
@@ -184,8 +198,9 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
 
     @classmethod
     def load(cls, settings):
-        lc.set_encoding(settings.get("encoding", 'utf-8'))
-        cls.font_face = settings.get("font_face", 'Lucida Console')
+        lc.set_encoding(settings.get('encoding', 'utf-8'))
+        cls.font_face = settings.get('font_face', 'Lucida Console')
+        cls.default_pattern = settings.get('default_pattern', '.*')
         syntaxes = settings.get('syntaxes', [])
         ignored_syntaxes = settings.get('ignored_syntaxes', [])
         aliases_ = settings.get('aliases', {})
@@ -195,6 +210,10 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
                 aliases[aliase] = syntax
         cls.language_decider = cls.create_language_decider(
             syntaxes, ignored_syntaxes, aliases)
+        if settings.get('exclude_hidden_files', True):
+            cls.walk = walk_exclude_hidden
+        else:
+            cls.walk = os.walk
 
     @classmethod
     def create_language_decider(cls, syntaxes, ignored_syntaxes, aliases):
@@ -220,58 +239,96 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
             return get_language_with_ignored_syntaxes
 
     @classmethod
-    def show_code_lines(cls, window, rootdir, walk):
-        window = sublime.active_window()
-        cc_time = time.strftime("%Y/%m/%d/%H:%M")
-        languages = count_lines_by_languages(rootdir, walk, cls.language_decider)
-        cls.show_languages(window, rootdir, cc_time, languages)
+    def run_task(cls, window, rootdir, get_filepaths):
+        cl_time = time.strftime("%Y/%m/%d/%H:%M")
+        compose = lambda fs: reduce(lambda f, g: lambda x: f(g(x)), fs)
+        task = StatusBarTask(None, 'Counting files', 'Succeed')
+        task.function = lambda: compose([
+            partial(cls.show_languages, window, rootdir, cl_time),
+            partial(cls.count_lines, task, rootdir),
+            get_filepaths,
+            cls.walk
+        ])(rootdir)
+        StatusBarThread(task, window, __package__)
 
     @classmethod
-    def show_languages(cls, window, rootdir, cc_time, languages):
+    def count_lines(cls, task, rootdir, filepaths):
+        task.message = 'Counting lines'
+        status_message = task.status_message
+        show_status_message = task.status_bar.show_status_message
+        decide_language = cls.language_decider
+        languages = Languages()
+        counted, total = 0, len(filepaths)
+        with task.status_bar.pause():
+            for path, file in filepaths:
+                lang = decide_language(file)
+                if lang:
+                    ext = os.path.splitext(file)[1].lstrip('.')
+                    type = ext if ext else file
+                    languages.insert(lang, type, path)
+                counted += 1
+                show_status_message(f'{status_message()}({counted}/{total})')
+        languages.summarize()
+        return languages
+
+    @classmethod
+    def show_languages(cls, window, rootdir, cl_time, languages):
         if not languages.entries:
-            window.status_message('CodeLines: No files')
+            window.status_message(f'{__package__}: No matching files')
             return
-        cc_languages = {l: v.report() for l, v in languages.entries.items()}
-        head = "ROOTDIR: %s\nTime: %s\n\n\n" % (rootdir, cc_time)
+        cl_languages = {}
+        with cd(rootdir):
+            for lang, types in languages.entries.items():
+                cl_languages[lang] = types.report()
+        head = f'ROOTDIR: {rootdir}\nTime: {cl_time}\n\n\n'
         body = languages.report()
-        view = window.new_file()
-        view.assign_syntax(cls.syntax_path)
-        view.set_name("CodeLines")
-        view.settings().set("font_face", cls.font_face)
-        view.settings().set("word_wrap", False)
-        view.settings().set("translate_tabs_to_spaces", True)
-        view.settings().set("rootdir", rootdir)
-        view.settings().set("cc_time", cc_time)
-        view.settings().set("cc_languages", cc_languages)
-        view.run_command("append", {"characters": head + body})
-        view.set_scratch(True)
-        view.set_read_only(True)
+        cls.create_view(
+            window,
+            settings={
+                'rootdir': rootdir,
+                'cl_time': cl_time,
+                'cl_languages': cl_languages
+            },
+            text=head + body)
 
     @classmethod
-    def show_types(cls, view, rootdir, cc_time, lang, types_report):
-        Loger.print("Show language:", lang)
-        head = "ROOTDIR: %s\nTime: %s\n\n\n" % (rootdir, cc_time)
+    def show_types(cls, view, rootdir, cl_time, lang, types_report):
+        debug(f'open language {lang}')
+        head = f'ROOTDIR: {rootdir}\nTime: {cl_time}\n\n\n'
         body = types_report
-        view = view.window().new_file()
+        cls.create_view(
+            view.window(),
+            settings={
+                'rootdir': rootdir,
+                'cl_time': cl_time,
+                'cl_language': lang,
+            },
+            text=head + body,
+            name=f'{__package__} - {lang}')
+
+    @classmethod
+    def create_view(cls, window, settings={}, text='', name=__package__):
+        settings.update({
+            'font_face': cls.font_face,
+            'word_wrap': False,
+            'translate_tabs_to_spaces': True
+            })
+        view = window.new_file()
+        view.settings().update(settings)
         view.assign_syntax(cls.syntax_path)
-        view.set_name("CodeLines - %s" % lang)
-        view.settings().set("font_face", cls.font_face)
-        view.settings().set("word_wrap", False)
-        view.settings().set("translate_tabs_to_spaces", True)
-        view.settings().set("rootdir", rootdir)
-        view.settings().set("cc_language", lang)
-        view.run_command("append", {"characters": head + body})
+        view.run_command("append", {"characters": text})
+        view.set_name(name)
         view.set_scratch(True)
         view.set_read_only(True)
 
     @classmethod
     def show_types_at(cls, view, pt):
-        cc_languages = view.settings().get("cc_languages")
+        cl_languages = view.settings().get("cl_languages")
         lang = view.substr(view.extract_scope(pt))
-        if lang in cc_languages:
+        if lang in cl_languages:
             rootdir = view.settings().get("rootdir")
-            cc_time = view.settings().get("cc_time")
-            cls.show_types(view, rootdir, cc_time, lang, cc_languages[lang])
+            cl_time = view.settings().get("cl_time")
+            cls.show_types(view, rootdir, cl_time, lang, cl_languages[lang])
             return True
         return False
 
@@ -281,7 +338,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         relpath = view.substr(view.extract_scope(pt))
         abspath = os.path.join(rootdir, relpath)
         if os.path.isfile(abspath):
-            Loger.print("open source file:", abspath)
+            debug(f'open source file {abspath}')
             view.window().open_file(abspath, sublime.ENCODED_POSITION)
             return True
         return False
@@ -292,10 +349,10 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         if name == "drag_select" and args.get("by", "") == "words":
             event = args["event"]
             pt = view.window_to_text((event["x"], event["y"]))
-            if view.settings().has("cc_language"):
+            if view.settings().has("cl_language"):
                 if CodeLinesViewsManager.open_file_at(view, pt):
                     return (name, args)
-            elif view.settings().has("cc_languages"):
+            elif view.settings().has("cl_languages"):
                 if CodeLinesViewsManager.show_types_at(view, pt):
                     return (name, args)
 
@@ -309,7 +366,7 @@ class File:
         self.lines = lines
 
     def report(self):
-        return '%10s│%8d│  %s' % (strsize(self.size), self.lines, self.path)
+        return f'{strsize(self.size):>10}│{self.lines:>8}│  {relpath(self.path)}'
 
 
 class Type:
@@ -405,20 +462,66 @@ class Languages(Types):
 """
 
 
-def count_lines_by_languages(path, walk, decide_language):
-    def count_file(path, file):
-        lang = decide_language(file)
-        if not lang:
-            return
-        ext = os.path.splitext(file)[1].lstrip('.')
-        type = ext if ext else file
-        languages.insert(lang, type, path)
-    languages = Languages()
-    with cd(path):
-        for path, file in walk():
-            count_file(path, file)
-        languages.summarize()
-    return languages
+class StatusBarTask:
+    def __init__(self, function, message, success):
+        self.function = function
+        self.message = message
+        self.success = success
+
+    def attach(self, status_bar):
+        self.status_bar = status_bar
+
+    def status_message(self):
+        return f'{self.message} {self.status_bar.status}'
+
+    def finish_message(self):
+        return self.success
+
+
+class StatusBarThread:
+    def __init__(self, task, window, key):
+        self.state = 7
+        self.step = 1
+        self.last_view = None
+        self.need_refresh = True
+        self.window = window
+        self.key = key
+        self.status = ''
+        self.task = task
+        self.task.attach(self)
+        self.thread = threading.Thread(target=task.function)
+        self.thread.start()
+        self.update_status_message()
+
+    @contextmanager
+    def pause(self):
+        self.need_refresh = False
+        yield
+        self.need_refresh = True
+
+    def update_status_message(self):
+        self.update_status_bar()
+        if self.need_refresh:
+            self.show_status_message(self.task.status_message())
+        if not self.thread.is_alive():
+            cleanup = self.last_view.erase_status
+            self.last_view.set_status(self.key, self.task.finish_message())
+            sublime.set_timeout(lambda: cleanup(self.key), 2000)
+        else:
+            sublime.set_timeout(self.update_status_message, 100)
+
+    def update_status_bar(self):
+        if self.state == 0 or self.state == 7:
+            self.step = -self.step
+        self.state += self.step
+        self.status = f"[{' ' * self.state}={' ' * (7 - self.state)}]"
+
+    def show_status_message(self, message):
+        active_view = self.window.active_view()
+        active_view.set_status(self.key, message)
+        if self.last_view != active_view:
+            self.last_view and self.last_view.erase_status(self.key)
+            self.last_view = active_view
 
 
 def plugin_loaded():

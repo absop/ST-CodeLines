@@ -16,8 +16,13 @@
         "command": "code_lines_in_directory",
     },
     {
-        "caption": "CodeLines: Count with Pattern",
+        "caption": "CodeLines: Count with Default Pattern",
         "command": "code_lines_in_directory_with_pattern",
+    },
+    {
+        "caption": "CodeLines: Input Pattern and Count",
+        "command": "code_lines_in_directory_with_pattern",
+        "args": {"from_settings": false},
     },
     {
         "caption": "CodeLines: File Size",

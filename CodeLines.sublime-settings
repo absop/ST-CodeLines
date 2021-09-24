@@ -4,7 +4,10 @@
 
     "font_face": "Lucida Console",
 
-    // "path_filters": [],
+    "exclude_hidden_files": true,
+
+    // A regular expression to filter paths
+    "default_pattern": ".*",
 
     /*
      * Use syntaxes if it is not empty,

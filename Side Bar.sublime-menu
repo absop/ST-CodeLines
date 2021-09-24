@@ -11,8 +11,13 @@
 		"args": {"paths": []}
 	},
 	{
-		"caption": "Code Lines (with Pattern)",
+		"caption": "Code Lines (Default Pattern)",
 		"command": "side_bar_code_lines_with_pattern",
 		"args": {"paths": []}
+	},
+	{
+		"caption": "Code Lines (Input Pattern)",
+		"command": "side_bar_code_lines_with_pattern",
+		"args": {"paths": [], "from_settings": false}
 	},
 ]
