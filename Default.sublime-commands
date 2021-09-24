@@ -16,6 +16,10 @@
         "command": "code_lines_in_directory",
     },
     {
+        "caption": "CodeLines: Count Default Path",
+        "command": "code_lines_in_default_path",
+    },
+    {
         "caption": "CodeLines: Count with Default Pattern",
         "command": "code_lines_in_directory_with_pattern",
     },

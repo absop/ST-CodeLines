@@ -19,6 +19,7 @@ def debug(*args):
         print(f'{__package__}:', *args)
 
 debug._debug = False
+error = sublime.error_message
 
 
 def walk_exclude_hidden(top):
@@ -125,12 +126,24 @@ class CodeLinesFileSizeCommand(sublime_plugin.WindowCommand):
                 self.folders += len(dirs)
 
 
+class CodeLinesInDefaultPathCommand(sublime_plugin.WindowCommand):
+    def run(self):
+        self.window.run_command(
+            'code_lines_in_directory_with_pattern',
+            {
+                'path': CodeLinesViewsManager.default_path,
+                'from_settings': True
+            })
+
+
 class CodeLinesInDirectoryCommand(sublime_plugin.WindowCommand):
     def run(self, path, **args):
         if os.path.isdir(path):
             self.count_directory(path, **args)
         elif os.path.isfile(path):
             self.count_singel_file(path)
+        else:
+            error(f'CodeLines: No such file or directory: {path}')
 
     def input(self, path, **args):
         return PathInputHandler()
@@ -200,6 +213,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
     def load(cls, settings):
         lc.set_encoding(settings.get('encoding', 'utf-8'))
         cls.font_face = settings.get('font_face', 'Lucida Console')
+        cls.default_path = settings.get('default_path', '')
         cls.default_pattern = settings.get('default_pattern', '.*')
         syntaxes = settings.get('syntaxes', [])
         ignored_syntaxes = settings.get('ignored_syntaxes', [])

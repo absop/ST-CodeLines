@@ -9,6 +9,9 @@
     // A regular expression to filter paths
     "default_pattern": ".*",
 
+    // A common used path of command palette running.
+    "default_path": "",
+
     /*
      * Use syntaxes if it is not empty,
      * use ignored_syntaxes otherwise
