@@ -221,19 +221,19 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
     settings_name = f'{__package__}.sublime-settings'
 
     @classmethod
-    def setup(cls):
+    def load(cls):
         settings = sublime.load_settings(cls.settings_name)
         settings.clear_on_change('encoding')
-        settings.add_on_change('encoding', lambda: cls.load(settings))
-        cls.load(settings)
+        settings.add_on_change('encoding', lambda: cls.reload(settings))
+        cls.reload(settings)
         lc.load_binary()
 
     @classmethod
-    def exit(cls):
+    def unload(cls):
         lc.unload_binary()
 
     @classmethod
-    def load(cls, settings):
+    def reload(cls, settings):
         lc.set_encoding(settings.get('encoding', 'utf-8'))
         cls.font_face = settings.get('font_face', 'Lucida Console')
         cls.default_path = settings.get('default_path', '')
@@ -564,8 +564,8 @@ class StatusBarThread:
 
 
 def plugin_loaded():
-    sublime.set_timeout_async(CodeLinesViewsManager.setup)
+    sublime.set_timeout_async(CodeLinesViewsManager.load)
 
 
 def plugin_unloaded():
-    sublime.set_timeout_async(CodeLinesViewsManager.exit)
+    sublime.set_timeout_async(CodeLinesViewsManager.unload)
