@@ -49,7 +49,7 @@ Of course, you can also use `Package Control` to help you if you have installed 
 
 
 ## TODO
-- [ ] Path matching
+- [x] Path matching
 - [ ] Initial cursor location
 - [ ] Next language/file (align cursor with scope name)
 - [ ] Proportions

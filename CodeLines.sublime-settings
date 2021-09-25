@@ -9,8 +9,11 @@
     // A regular expression to filter paths
     "default_pattern": ".*",
 
-    // A common used path of command palette running.
+    // A common used path of command palette running
     "default_path": "",
+
+    // For Windows, if true, '\' in paths will be replaced with '/'
+    "use_unix_style_path": true,
 
     /*
      * Use syntaxes if it is not empty,

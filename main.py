@@ -20,6 +20,7 @@ def debug(*args):
 
 debug._debug = False
 error = sublime.error_message
+is_windows = sublime.platform() == 'windows'
 
 
 class SideBarFileSizeCommand(sublime_plugin.WindowCommand):
@@ -247,6 +248,10 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
                 aliases[aliase] = syntax
         cls.language_decider = cls.create_language_decider(
             syntaxes, ignored_syntaxes, aliases)
+        if is_windows and settings.get('use_unix_style_path', True):
+            cls.normalize = lambda path: path.replace('\\', '/')
+        else:
+            cls.normalize = lambda path: path
 
     @classmethod
     def create_language_decider(cls, syntaxes, ignored_syntaxes, aliases):
@@ -273,6 +278,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
 
     @classmethod
     def run_task(cls, window, rootdir, get_filepaths):
+        rootdir = cls.normalize(rootdir)
         cl_time = time.strftime("%Y/%m/%d/%H:%M")
         compose = lambda fs: reduce(lambda f, g: lambda x: f(g(x)), fs)
         task = StatusBarTask(None, 'Counting files', 'Succeed')
@@ -398,7 +404,8 @@ class File:
         self.lines = lines
 
     def report(self):
-        return f'{strsize(self.size):>10}│{self.lines:>8}│  {relpath(self.path)}'
+        path = CodeLinesViewsManager.normalize(relpath(self.path))
+        return f'{strsize(self.size):>10}│{self.lines:>8}│  {path}'
 
 
 class Type:
