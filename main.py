@@ -22,10 +22,6 @@ debug._debug = False
 error = sublime.error_message
 
 
-def walk_exclude_hidden(top):
-    return os.walk(top)
-
-
 class SideBarFileSizeCommand(sublime_plugin.WindowCommand):
     command = 'code_lines_file_size'
 
@@ -159,12 +155,20 @@ class CodeLinesInDirectoryCommand(sublime_plugin.WindowCommand):
     def count_directory(self, path):
         CodeLinesViewsManager.run_task(self.window, path, self.get_filepaths)
 
-    def get_filepaths(self, walk_result):
+    def get_filepaths(self, top):
         filepaths = []
-        for root, _, files in walk_result:
-            for file in files:
-                path = os.path.join(root, file)
-                filepaths.append((path, file))
+        if CodeLinesViewsManager.exclude_hidden_files:
+            for root, dirs, files in os.walk(top):
+                for file in files:
+                    if not file[0] == '.':
+                        path = os.path.join(root, file)
+                        filepaths.append((path, file))
+                dirs[:] = [d for d in dirs if not d[0] == '.']
+        else:
+            for root, dirs, files in os.walk(top):
+                for file in files:
+                    path = os.path.join(root, file)
+                    filepaths.append((path, file))
         return filepaths
 
 
@@ -192,13 +196,22 @@ class CodeLinesInDirectoryWithPatternCommand(CodeLinesInDirectoryCommand):
             panel.sel().add(sublime.Region(0, len(default_pattern)))
             panel.assign_syntax('RegExp.sublime-syntax')
 
-    def get_filepaths(self, walk_result):
+    def get_filepaths(self, top):
         filepaths = []
-        for root, _, files in walk_result:
-            for file in files:
-                path = os.path.join(root, file)
-                if self.regex.fullmatch(path):
-                    filepaths.append((path, file))
+        if CodeLinesViewsManager.exclude_hidden_files:
+            for root, dirs, files in os.walk(top):
+                for file in files:
+                    if not file[0] == '.':
+                        path = os.path.join(root, file)
+                        if self.regex.match(path):
+                            filepaths.append((path, file))
+                dirs[:] = [d for d in dirs if not d[0] == '.']
+        else:
+            for root, dirs, files in os.walk(top):
+                for file in files:
+                    path = os.path.join(root, file)
+                    if self.regex.match(path):
+                        filepaths.append((path, file))
         return filepaths
 
 
@@ -224,6 +237,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         cls.font_face = settings.get('font_face', 'Lucida Console')
         cls.default_path = settings.get('default_path', '')
         cls.default_pattern = settings.get('default_pattern', '.*')
+        cls.exclude_hidden_files = settings.get('exclude_hidden_files', True)
         syntaxes = settings.get('syntaxes', [])
         ignored_syntaxes = settings.get('ignored_syntaxes', [])
         aliases_ = settings.get('aliases', {})
@@ -233,10 +247,6 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
                 aliases[aliase] = syntax
         cls.language_decider = cls.create_language_decider(
             syntaxes, ignored_syntaxes, aliases)
-        if settings.get('exclude_hidden_files', True):
-            cls.walk = walk_exclude_hidden
-        else:
-            cls.walk = os.walk
 
     @classmethod
     def create_language_decider(cls, syntaxes, ignored_syntaxes, aliases):
@@ -270,7 +280,6 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
             partial(cls.show_languages, window, rootdir, cl_time),
             partial(cls.count_lines, task, rootdir),
             get_filepaths,
-            cls.walk
         ])(rootdir)
         StatusBarThread(task, window, __package__)
 
