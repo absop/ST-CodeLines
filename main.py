@@ -9,9 +9,9 @@ from os.path import relpath
 import sublime
 import sublime_plugin
 
-from .lib import lc
-from .lib import utils
-from .lib.utils import cd, strsize, try_or_zero
+from . import utils
+from .src import lc
+from .utils import cd, strsize, try_or_zero
 
 
 def debug(*args):
@@ -88,7 +88,7 @@ class CodeLinesFileSizeCommand(sublime_plugin.WindowCommand):
     def run(self, path):
         task = StatusBarTask(lambda: self.show_size(path),
             'Counting...', 'Succeed.')
-        StatusBarThread(task, self.window, __package__)
+        StatusBarThread(task, self.window)
 
     def input(self, args):
         return PathInputHandler()
@@ -221,16 +221,11 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
     settings_name = f'{__package__}.sublime-settings'
 
     @classmethod
-    def load(cls):
+    def init(cls):
         settings = sublime.load_settings(cls.settings_name)
         settings.clear_on_change('encoding')
         settings.add_on_change('encoding', lambda: cls.reload(settings))
         cls.reload(settings)
-        lc.load_binary()
-
-    @classmethod
-    def unload(cls):
-        lc.unload_binary()
 
     @classmethod
     def reload(cls, settings):
@@ -287,7 +282,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
             partial(cls.count_lines, task, rootdir),
             get_filepaths,
         ])(rootdir)
-        StatusBarThread(task, window, __package__)
+        StatusBarThread(task, window)
 
     @classmethod
     def count_lines(cls, task, rootdir, filepaths):
@@ -518,7 +513,7 @@ class StatusBarTask:
 
 
 class StatusBarThread:
-    def __init__(self, task, window, key):
+    def __init__(self, task, window, key='__z{|}~__'):
         self.state = 7
         self.step = 1
         self.last_view = None
@@ -564,8 +559,19 @@ class StatusBarThread:
 
 
 def plugin_loaded():
-    sublime.set_timeout_async(CodeLinesViewsManager.load)
+    sublime.set_timeout_async(CodeLinesViewsManager.init)
+
+    so_cache_dir  = f'{sublime.cache_path()}/{__package__}'
+    so_cache_path = f'{so_cache_dir}/lc.so'
+    resource_path = f'Packages/{__package__}/so/lc.{sublime.platform()}.so'
+    resource_data = sublime.load_binary_resource(resource_path)
+
+    os.makedirs(so_cache_dir, exist_ok=True)
+    with open(so_cache_path, 'wb+') as fd:
+        fd.write(resource_data)
+
+    lc.load_shared_object(so_cache_path)
 
 
 def plugin_unloaded():
-    sublime.set_timeout_async(CodeLinesViewsManager.unload)
+    lc.unload_shared_object()
