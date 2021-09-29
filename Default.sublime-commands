@@ -8,10 +8,6 @@
           }
     },
     {
-        "caption": "CodeLines: Toggle Log",
-        "command": "code_lines_toggle_log",
-    },
-    {
         "caption": "CodeLines: Count",
         "command": "code_lines_in_directory",
     },

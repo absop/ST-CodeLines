@@ -1,4 +1,6 @@
 {
+    "debug": false,
+
     // encoding for os file path
     "encoding": "utf-8",
 
@@ -22,26 +24,7 @@
     "syntaxes": [],
 
     "ignored_syntaxes": [
-        "Binary (Adobe After Effects)",
-        "Binary (Adobe Illustrator)",
-        "Binary (Adobe InDesign)",
-        "Binary (Adobe Photoshop)",
-        "Binary (Adobe Premiere Pro)",
-        "Binary (Archive)",
-        "Binary (Audio)",
-        "Binary (Blender)",
-        "Binary (Font)",
-        "Binary (Image)",
-        "Binary (Microsoft Access)",
-        "Binary (Microsoft Excel)",
-        "Binary (Microsoft OneNote)",
-        "Binary (Microsoft PowerPoint)",
-        "Binary (Microsoft Word)",
-        "Binary (PDF)",
-        "Binary (Qt)",
-        "Binary (Video)",
-        "Binary (Windows Shortcut)",
-
+        "Binary",
         "Plain Text",
 
         "Git Attributes",
@@ -57,6 +40,27 @@
         "Git Rebase Todo",
     ],
     "aliases": {
+        "Binary": [
+            "Binary (Adobe After Effects)",
+            "Binary (Adobe Illustrator)",
+            "Binary (Adobe InDesign)",
+            "Binary (Adobe Photoshop)",
+            "Binary (Adobe Premiere Pro)",
+            "Binary (Archive)",
+            "Binary (Audio)",
+            "Binary (Blender)",
+            "Binary (Font)",
+            "Binary (Image)",
+            "Binary (Microsoft Access)",
+            "Binary (Microsoft Excel)",
+            "Binary (Microsoft OneNote)",
+            "Binary (Microsoft PowerPoint)",
+            "Binary (Microsoft Word)",
+            "Binary (PDF)",
+            "Binary (Qt)",
+            "Binary (Video)",
+            "Binary (Windows Shortcut)",
+        ],
         "Assembly": [
             "Nasm Assembly",
             "x86 and x86_64 Assembly",

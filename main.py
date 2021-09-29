@@ -14,11 +14,24 @@ from .src import lc
 from .utils import cd, strsize, try_or_zero
 
 
-def debug(*args):
-    if debug._debug:
+class Debug:
+    __slots__ = []
+
+    _debug = False
+
+    @classmethod
+    def print(cls, *args):
+        if not cls._debug:
+            return
         print(f'{__package__}:', *args)
 
-debug._debug = False
+    @classmethod
+    def set_debug(cls, debug):
+        cls._debug = debug
+        state = ['closing', 'opening'][debug]
+        print(f'{__package__}: debug is {state}')
+
+
 error = sublime.error_message
 is_windows = sublime.platform() == 'windows'
 
@@ -57,11 +70,6 @@ class CodeLinesOpenFileCommand(sublime_plugin.TextCommand):
         if self.view.settings().has("cl_language"):
             pt = self.view.sel()[0].a
             CodeLinesViewsManager.open_file_at(self.view, pt)
-
-
-class CodeLinesToggleLogCommand(sublime_plugin.WindowCommand):
-    def run(self):
-        debug._debug = not debug._debug
 
 
 class PathInputHandler(sublime_plugin.TextInputHandler):
@@ -181,7 +189,7 @@ class CodeLinesInDirectoryWithPatternCommand(CodeLinesInDirectoryCommand):
 
     def count_directory(self, path, from_settings=True):
         def count_directory_with_pattern(path, pattern):
-            debug(f'pattern: {pattern}')
+            Debug.print(f'pattern: {pattern}')
             self.regex = re.compile(pattern)
             super(self.__class__, self).count_directory(path)
 
@@ -230,6 +238,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
     @classmethod
     def reload(cls, settings):
         lc.set_encoding(settings.get('encoding', 'utf-8'))
+        Debug.set_debug(settings.get('debug', False))
         cls.font_face = settings.get('font_face', 'Lucida Console')
         cls.default_path = settings.get('default_path', '')
         cls.default_pattern = settings.get('default_pattern', '.*')
@@ -326,7 +335,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
 
     @classmethod
     def show_types(cls, view, rootdir, cl_time, lang, types_report):
-        debug(f'open language {lang}')
+        Debug.print(f'open language {lang}')
         head = f'ROOTDIR: {rootdir}\nTime: {cl_time}\n\n\n'
         body = types_report
         cls.create_view(
@@ -371,7 +380,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         relpath = view.substr(view.extract_scope(pt))
         abspath = os.path.join(rootdir, relpath)
         if os.path.isfile(abspath):
-            debug(f'open source file {abspath}')
+            Debug.print(f'open source file {abspath}')
             view.window().open_file(abspath, sublime.ENCODED_POSITION)
             return True
         return False
