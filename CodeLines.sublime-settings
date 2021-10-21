@@ -121,7 +121,7 @@
             "JavaScript (Webpack)",
             "JavaScript - EJS",
         ],
-        "Ocaml": [
+        "OCaml": [
             "camlp4",
             "OCamllex",
             "OCamlyacc",
