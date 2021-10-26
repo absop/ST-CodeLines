@@ -573,11 +573,14 @@ def plugin_loaded():
     so_cache_dir  = f'{sublime.cache_path()}/{__package__}'
     so_cache_path = f'{so_cache_dir}/lc.so'
     resource_path = f'Packages/{__package__}/so/lc.{sublime.platform()}.so'
-    resource_data = sublime.load_binary_resource(resource_path)
+    try:
+        resource_data = sublime.load_binary_resource(resource_path)
 
-    os.makedirs(so_cache_dir, exist_ok=True)
-    with open(so_cache_path, 'wb+') as fd:
-        fd.write(resource_data)
+        os.makedirs(so_cache_dir, exist_ok=True)
+        with open(so_cache_path, 'wb+') as fd:
+            fd.write(resource_data)
+    except:
+        pass
 
     lc.load_shared_object(so_cache_path)
 
