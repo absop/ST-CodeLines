@@ -259,9 +259,18 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
 
     @classmethod
     def create_language_decider(cls, syntaxes, ignored_syntaxes, aliases):
+        def get_first_line(file):
+            try:
+                # We use UTF-8 encoding to read the first line
+                with open(file, 'r', encoding='UTF-8') as fd:
+                    return fd.readline(1024)
+            except:
+                return ''
+
         if syntaxes:
             def get_language_with_syntaxes(file):
-                lang = sublime.find_syntax_for_file(file).name
+                first_line = get_first_line(file)
+                lang = sublime.find_syntax_for_file(file, first_line).name
                 if lang in aliases:
                     lang = aliases[lang]
                 if lang in syntaxes:
@@ -270,7 +279,8 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
             return get_language_with_syntaxes
         else:
             def get_language_with_ignored_syntaxes(file):
-                lang = sublime.find_syntax_for_file(file).name
+                first_line = get_first_line(file)
+                lang = sublime.find_syntax_for_file(file, first_line).name
                 if lang in ignored_syntaxes:
                     return None
                 if lang in aliases:
@@ -303,7 +313,7 @@ class CodeLinesViewsManager(sublime_plugin.EventListener):
         counted, total = 0, len(filepaths)
         with task.status_bar.pause():
             for path, file in filepaths:
-                lang = decide_language(file)
+                lang = decide_language(path)
                 if lang:
                     ext = os.path.splitext(file)[1].lstrip('.')
                     type = ext if ext else file
